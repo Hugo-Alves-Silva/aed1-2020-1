@@ -2,7 +2,10 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_image.h>
-
+#include <SDL2/SDL_ttf.h>
+#include <cstdlib>
+#include <ctime>
+#include <string>
 //FPS
 const int FPS = 60;
 
@@ -11,9 +14,9 @@ void limitaFrames(Uint32 frameStart){
 		SDL_Delay((1000/FPS) - (SDL_GetTicks() - frameStart));
 	}
 }
-bool inicializaSDL(SDL_Window** window, SDL_Renderer** renderer){
+bool inicializaSDL(SDL_Window** window, SDL_Renderer** renderer, TTF_Font **font){
 	//Inicializa a SDL
-	if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) == -1){
+	if(SDL_Init(SDL_INIT_EVERYTHING) == -1){
 		printf("Erro ao inicializar: %s.\n", SDL_GetError());
 		return false;
 	}
@@ -35,16 +38,22 @@ bool inicializaSDL(SDL_Window** window, SDL_Renderer** renderer){
 		return false;
 	}
 
+	
+
+    *font = TTF_OpenFont("verdana.ttf", 25);
+	
 	return true;
 }
 int main(){
-	
+	srand(time(NULL));
+	TTF_Init();
 	SDL_Window* window;
 	SDL_Renderer* renderer;
-	if(!inicializaSDL(&window, &renderer)){
+	TTF_Font *font;
+	if(!inicializaSDL(&window, &renderer, &font)){
 		return -1;
 	}
-	
+
 	//Cria uma surface
 	SDL_Surface* surface = IMG_Load("Raquete.jpeg");
 	if(!surface){
@@ -108,12 +117,12 @@ int main(){
 
 	SDL_Rect dest[4];
 	//SDL_QueryTexture(texture, NULL, NULL, &dest.w, &dest.h);
-	dest[raquete1].w = 20;
+	dest[raquete1].w = 15;
 	dest[raquete1].h = 105;
 	dest[raquete1].x = 20;
 	dest[raquete1].y = 270;
 	
-	dest[raquete2].w = 20;
+	dest[raquete2].w = 15;
 	dest[raquete2].h = 105;
 	dest[raquete2].x =  1040 - 45;
 	dest[raquete2].y = 270;
@@ -127,11 +136,19 @@ int main(){
 	dest[bola].h = 20;
 	dest[bola].x = 510;
 	dest[bola].y = 315;
+
+	SDL_Rect renderQuad = { 20, 20, 50, 50 };
+	SDL_Color textColor = { 255, 255, 255, 0 };
 	
 	
 	float velocidadeRaquete = 19.5;
-	
-	
+	float velocidadeBolaX = 8, velocidadeBolaY = 8;
+	int auxBolaX = rand() % 100; 
+	int auxBolaY = rand() % 100;
+	if(auxBolaX % 2 == 0) velocidadeBolaX = -velocidadeBolaX;
+	if(auxBolaY % 2 == 0) velocidadeBolaY = -velocidadeBolaY;
+
+	int score1 = 0, score2 = 0;
 	//Usado para contar tempo de cada frame
 	Uint32 frameStart;	
 
@@ -148,6 +165,7 @@ int main(){
 				
 			}
 		}
+
 		const Uint8 *keyboard_state_array = SDL_GetKeyboardState(NULL);
 
 		if(keyboard_state_array[SDL_SCANCODE_UP] && !(keyboard_state_array[SDL_SCANCODE_DOWN])){
@@ -167,8 +185,56 @@ int main(){
 			dest[raquete1].y += (velocidadeRaquete);
 			if (dest[raquete1].y > 545) dest[raquete1].y = 545;
 		}					
+		
+		if(dest[bola].x < 0){
+			dest[bola].w = 20;
+			dest[bola].h = 20;
+			dest[bola].x = 510;
+			dest[bola].y = 315;
+			auxBolaX = rand() % 100; 
+			auxBolaY = rand() % 100;
+			if(auxBolaX % 2 == 0) velocidadeBolaX = -velocidadeBolaX;
+			if(auxBolaY % 2 == 0) velocidadeBolaY = -velocidadeBolaY;
+			score2++;
+		}
+		if(dest[bola].x > 1040 - dest[bola].w){
+			dest[bola].w = 20;
+			dest[bola].h = 20;
+			dest[bola].x = 510;
+			dest[bola].y = 315;
+			auxBolaX = rand() % 100; 
+			auxBolaY = rand() % 100;
+			if(auxBolaX % 2 == 0) velocidadeBolaX = -velocidadeBolaX;
+			if(auxBolaY % 2 == 0) velocidadeBolaY = -velocidadeBolaY;
+			score1++;
+		}
 
+		if(SDL_HasIntersection(&dest[bola], &dest[raquete1])) {
+			dest[bola].x = dest[raquete1].x + dest[raquete1].w;
+  			velocidadeBolaX = -velocidadeBolaX;
+ 		}
+ 		if(SDL_HasIntersection(&dest[bola], &dest[raquete2])) {
+  			dest[bola].x = dest[raquete2].x - dest[bola].w;
+  			velocidadeBolaX = -velocidadeBolaX;
+ 		}
+ 		
+		if(dest[bola].y < 0 || dest[bola].y > 650 - dest[bola].h) velocidadeBolaY = -velocidadeBolaY;	
+		
+		dest[bola].x += velocidadeBolaX;
+		dest[bola].y += velocidadeBolaY;
+	
+		std::string score_text = "" +  std::to_string(score1);        
+	
+		SDL_Surface* textSurface = TTF_RenderText_Solid(font, score_text.c_str(), textColor);
+		SDL_Texture* text = SDL_CreateTextureFromSurface(renderer, textSurface);
+		SDL_FreeSurface(textSurface);
+	
+		
+		
+		
+			
 		SDL_RenderClear(renderer);
+		SDL_RenderCopy(renderer, text, NULL, &renderQuad);
 		SDL_RenderCopy(renderer, texture, NULL, &dest[raquete1]);
 		SDL_RenderCopy(renderer, texture2, NULL, &dest[raquete2]);
 		SDL_RenderCopy(renderer, texture3, NULL, &dest[linha]);
@@ -176,6 +242,7 @@ int main(){
 		SDL_RenderPresent(renderer);
 		
 		limitaFrames(frameStart);
+		SDL_DestroyTexture(text);
 	}
 
 
@@ -185,6 +252,7 @@ int main(){
 	SDL_DestroyTexture(texture3);
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
+	TTF_Quit();
 	SDL_Quit();
 	
 	return 0;
