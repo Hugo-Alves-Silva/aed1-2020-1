@@ -107,7 +107,7 @@ int main(){
 	
 	dest[raquete2].w = 15;
 	dest[raquete2].h = 105;
-	dest[raquete2].x =  1040 - 45;
+	dest[raquete2].x =  1040 - 35;
 	dest[raquete2].y = 270;
 
 	dest[linha].w = 14;
